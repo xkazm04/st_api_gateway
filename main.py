@@ -27,12 +27,14 @@ RUNNING_IN_DOCKER = os.getenv("CONTAINER_ENV", "0") == "1"
 
 # Set default URLs based on environment
 if RUNNING_IN_DOCKER:
+    CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "http://core_service:8000")
     USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user_service:8002")
     IMAGE_SERVICE_URL = os.getenv("IMAGE_SERVICE_URL", "http://image_service:8003")
     AUDIO_SERVICE_URL = os.getenv("AUDIO_SERVICE_URL", "http://audio_service:8004")
     VIDEO_SERVICE_URL = os.getenv("VIDEO_SERVICE_URL", "http://video_service:8005")
     WORKFLOW_SERVICE_URL = os.getenv("WORKFLOW_SERVICE_URL", "http://workflow_service:8006")
 else:
+    CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "http://localhost:8000")
     USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:8002")
     IMAGE_SERVICE_URL = os.getenv("IMAGE_SERVICE_URL", "http://localhost:8003")
     AUDIO_SERVICE_URL = os.getenv("AUDIO_SERVICE_URL", "http://localhost:8004")
@@ -103,6 +105,7 @@ async def startup_event():
     service_cache = {
         "timestamp": time.time(),
         "services": {
+            "core": CORE_SERVICE_URL,
             "user": USER_SERVICE_URL,
             "audio": AUDIO_SERVICE_URL,
             "workflow": WORKFLOW_SERVICE_URL,
