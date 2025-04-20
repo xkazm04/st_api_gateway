@@ -17,8 +17,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("voice_api_tests.log")
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger("api_gateway.health.audio")
@@ -37,11 +36,15 @@ class AudioServiceTests:
         start_time = time.time()
         
         try:
-            project_id = str(uuid.uuid4())
+            project_id = str(uuid.uuid4())    
             response = await self.client.post(
-                f"{self.base_url}/voices/projects/{project_id}",
-                data={"voice_name": "TestVoice", "description": "Test voice", "label": "test"},
-                files={"samples": ("test.wav", b"fake-audio-bytes")},
+                f"{self.base_url}/voices/test",
+                data={
+                    "project_id": project_id,
+                    "name": "TestVoice",
+                    "description": "Test voice", 
+                    "label": "test"
+                },
             )
             
             duration_ms = int((time.time() - start_time) * 1000)
