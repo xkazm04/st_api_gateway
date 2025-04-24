@@ -171,6 +171,12 @@ async def circuit_protected_call_service(service, method, url, headers, params, 
     """Call a service with circuit breaker protection"""
     return await call_service_with_status(service, method, url, headers, params, body)
 
+service_semaphores = {
+    "core": asyncio.Semaphore(20),  
+    "image": asyncio.Semaphore(5),  
+    "video": asyncio.Semaphore(3), 
+}
+
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_to_service(service: str, path: str, request: Request):
     """Proxy requests to the appropriate service"""
@@ -178,20 +184,24 @@ async def proxy_to_service(service: str, path: str, request: Request):
     logger.info(f"Incoming request: {method} /{service}/{path}")
     
     try:
-        # Get service URL from service discovery
-        service_url = get_service_url(service)
-        target_url = f"{service_url}/{path}"
+        # Get semaphore for this service, default to 10 if not specified
+        semaphore = service_semaphores.get(service, asyncio.Semaphore(10))
         
-        body = await request.body()
-        headers = dict(request.headers)
-        headers.pop("host", None)
-        
-        headers["X-From-Gateway"] = "true"
-        params = dict(request.query_params)
-        
-        # Call the service with circuit breaking
-        response = await circuit_protected_call_service(service, method, target_url, headers, params, body)
-        return response
+        async with semaphore:
+            # Get service URL from service discovery
+            service_url = get_service_url(service)
+            target_url = f"{service_url}/{path}"
+            
+            body = await request.body()
+            headers = dict(request.headers)
+            headers.pop("host", None)
+            
+            headers["X-From-Gateway"] = "true"
+            params = dict(request.query_params)
+            
+            # Call the service with circuit breaking
+            response = await circuit_protected_call_service(service, method, target_url, headers, params, body)
+            return response
         
     except HTTPException as exc:
         logger.error(f"HTTP Exception: {exc.detail}")

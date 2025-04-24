@@ -33,6 +33,33 @@ logger = logging.getLogger("api_gateway")
 # Circuit breaker state
 circuit_states = {}
 
+def initialize_circuit_state(service: str) -> Dict:
+    """Initialize circuit state with service-specific settings"""
+    # Configure different thresholds for different services
+    if service == "image" or service == "video":
+        # More lenient settings for resource-intensive services
+        return {
+            'state': 'closed',
+            'failure_count': 0,
+            'failure_threshold': 8,  # More failures allowed before opening
+            'timeout': 45,          # Longer recovery time
+            'opened_at': 0,
+            'consecutive_successes': 0,
+            'success_threshold': 3  # Require multiple successes to fully close
+        }
+    else:
+        # Default settings for most services
+        return {
+            'state': 'closed',
+            'failure_count': 0,
+            'failure_threshold': 5,
+            'timeout': 30,
+            'opened_at': 0,
+            'consecutive_successes': 0,
+            'success_threshold': 2
+        }
+
+
 async def call_service_with_status(service: str, method: str, url: str, headers: Dict, params: Dict, body: bytes):
     """Make HTTP request to a service with circuit breaking and preserve status code"""
     # Check if circuit is open for this service
@@ -74,11 +101,13 @@ async def call_service_with_status(service: str, method: str, url: str, headers:
         
         # Reset failure count on successful response
         if service in circuit_states and response.status_code < 500:
-            circuit_states[service]['failure_count'] = 0
             if circuit_states[service]['state'] == 'half-open':
-                circuit_states[service]['state'] = 'closed'
-                CIRCUIT_STATE.labels(service=service).set(0)
-                logger.info(f"Circuit closed for service {service} after successful request")
+                circuit_states[service]['consecutive_successes'] += 1
+                if circuit_states[service]['consecutive_successes'] >= circuit_states[service]['success_threshold']:
+                    circuit_states[service]['state'] = 'closed'
+                    circuit_states[service]['consecutive_successes'] = 0
+                    CIRCUIT_STATE.labels(service=service).set(0)
+                    logger.info(f"Circuit closed for service {service} after {circuit_states[service]['success_threshold']} successful requests")
         
         try:
             content = response.json()
@@ -101,13 +130,7 @@ async def call_service_with_status(service: str, method: str, url: str, headers:
         REQUEST_LATENCY.labels(service=service).observe(time.time() - start_time)
         
         if service not in circuit_states:
-            circuit_states[service] = {
-                'state': 'closed',
-                'failure_count': 0,
-                'failure_threshold': 5,
-                'timeout': 30,  # seconds
-                'opened_at': 0
-            }
+            circuit_states[service] = initialize_circuit_state(service)
             
         if circuit_states[service]['state'] == 'closed':
             circuit_states[service]['failure_count'] += 1

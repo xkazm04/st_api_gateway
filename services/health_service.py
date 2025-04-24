@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -232,4 +233,20 @@ class HealthService:
             for client in self.clients.values():
                 if hasattr(client, 'aclose'):
                     await client.aclose()
-                    
+    
+    async def restart_service(self, service_name: str):
+        """Attempt to restart a failing service"""
+        logger.warning(f"Attempting to trigger recovery for {service_name}")
+        
+        # Send a special restart trigger to the service's health endpoint
+        if service_name in self.services_config:
+            base_url = self.services_config[service_name]["base_url"]
+            try:
+                restart_url = f"{base_url}/health/restart"
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    headers = {"X-From-Gateway": "true", "X-Recovery-Token": os.getenv("RECOVERY_SECRET", "default-recovery-token")}
+                    await client.post(restart_url, headers=headers)
+                logger.info(f"Recovery signal sent to {service_name}")
+            except Exception as e:
+                logger.error(f"Failed to send recovery signal to {service_name}: {str(e)}")
+
