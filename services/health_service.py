@@ -184,7 +184,7 @@ class HealthService:
             }
         ]
     
-    async def start_monitoring(self, interval_seconds=3600, initial_delay_seconds=60):
+    async def start_monitoring(self, interval_seconds=360000, initial_delay_seconds=20):
         """Start periodic health monitoring with optional initial delay"""
         if self.running:
             logger.warning("Health monitoring is already running")
@@ -243,7 +243,7 @@ class HealthService:
             base_url = self.services_config[service_name]["base_url"]
             try:
                 restart_url = f"{base_url}/health/restart"
-                async with httpx.AsyncClient(timeout=5.0) as client:
+                async with httpx.AsyncClient(timeout=10.0) as client:
                     headers = {"X-From-Gateway": "true", "X-Recovery-Token": os.getenv("RECOVERY_SECRET", "default-recovery-token")}
                     await client.post(restart_url, headers=headers)
                 logger.info(f"Recovery signal sent to {service_name}")
