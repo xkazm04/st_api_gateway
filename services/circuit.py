@@ -39,16 +39,16 @@ def initialize_circuit_state(service: str) -> Dict:
     configs = {
         "image": {
             "failure_threshold": 8,
-            "timeout": 45,
+            "timeout": 145,
             "success_threshold": 3,
-            "request_timeout": 60.0,
+            "request_timeout": 120.0,
             "backoff_factor": 1.5
         },
         "video": {
             "failure_threshold": 8,
-            "timeout": 45,
+            "timeout": 145,
             "success_threshold": 3,
-            "request_timeout": 60.0,
+            "request_timeout": 120.0,
             "backoff_factor": 1.5
         },
         "core": {
@@ -58,7 +58,6 @@ def initialize_circuit_state(service: str) -> Dict:
             "request_timeout": 25.0,
             "backoff_factor": 1.2
         },
-        # Add other services with specific configs
     }
     
     # Get service config or use default
